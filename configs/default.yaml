@@ -1,0 +1,59 @@
+
+name: debug
+root: /home/luke/projects/experiments/pixmatch
+train: True
+seed: 42
+wandb: False
+
+data:
+
+  source:
+    dataset: 'gta5'
+    root:
+    list:
+    base_size: [1280, 720]
+    crop_size: [1280, 720]
+
+  target:
+    dataset: 'cityscapes'
+    root:
+    list:
+    base_size: [1280, 640]
+    crop_size: [1280, 640]
+
+  split: train
+  num_classes: 19
+  num_workers: 4
+  pin_memory: 2
+  numpy_transform: True
+  random_mirror: True
+  random_crop: False
+  resize: True
+  gaussian_blur: True
+
+
+model:
+  backbone: deeplabv2_multi
+  imagenet_pretrained: ${root}/pretrained/DeepLab_resnet_pretrained_init-f81d91e8.pth
+  checkpoint: "${root}/pretrained/GTA5_source.pth"
+
+opt:
+  kind: "SGD"
+  momentum: 0.9
+  weight_decay: 5e-4
+  lr: 1e-4
+  iterations: 250000
+  poly_power: 0.9
+
+# For auxiliary mode output
+aux: True
+lam_aux: 0.1
+
+# Exponential weighted average of model parameters
+ema_decay: 0.999
+
+# Perturbations
+pseudolabel_threshold: 0.0
+lam_aug: 0.0
+lam_fourier: 0.0
+lam_cutmix: 0.0
