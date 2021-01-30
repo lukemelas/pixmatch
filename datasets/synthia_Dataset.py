@@ -3,17 +3,12 @@ from PIL import Image
 import numpy as np
 import os
 import torch
-import torch.utils.data as data
 import imageio
 
-from datasets.cityscapes_Dataset import City_Dataset
+from datasets.cityscapes_Dataset import City_Dataset, to_tuple
 imageio.plugins.freeimage.download()
 
 synthia_set_16 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 15, 17, 18]
-
-
-def to_tuple(x):
-    return x if isinstance(x, tuple) else (x, x)
 
 
 class SYNTHIA_Dataset(City_Dataset):
@@ -25,7 +20,11 @@ class SYNTHIA_Dataset(City_Dataset):
         base_size=769,
         crop_size=769,
         training=True,
-        class_16=False
+        class_16=False,
+        random_mirror=False,
+        random_crop=False,
+        resize=False,
+        gaussian_blur=False,
     ):
 
         # Args
@@ -37,10 +36,10 @@ class SYNTHIA_Dataset(City_Dataset):
         self.training = training
 
         # Augmentations
-        self.random_mirror = args.random_mirror
-        self.random_crop = args.random_crop
-        self.resize = args.resize
-        self.gaussian_blur = args.gaussian_blur
+        self.random_mirror = random_mirror
+        self.random_crop = random_crop
+        self.resize = resize
+        self.gaussian_blur = gaussian_blur
 
         # Files
         item_list_filepath = os.path.join(self.list_path, self.split + ".txt")

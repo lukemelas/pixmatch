@@ -42,9 +42,10 @@ class Trainer():
         self.best_source_MIou = 0
 
         # Metrics
-        self.Eval = Eval(self.cfg.data.num_classes)
+        self.evaluator = Eval(self.cfg.data.num_classes)
 
         # Loss
+        self.ignore_index = -1
         self.loss = nn.CrossEntropyLoss(ignore_index=self.ignore_index)
 
         # Model
@@ -66,57 +67,40 @@ class Trainer():
             raise NotImplementedError()
         self.lr_factor = 10
 
-        # Source and target dataset keyword arguments
-        kwargs_s_ds = dict(
-            data_root_path=self.cfg.source.root, list_path=self.cfg.source.list,
-            base_size=self.cfg.source.base_size, crop_size=self.cfg.source.crop_size)
-        kwargs_t_ds = dict(
-            data_root_path=self.cfg.target.root, list_path=self.cfg.target.list,
-            base_size=self.cfg.target.base_size, crop_size=self.cfg.target.crop_size)
-
-        # Dataloader keyword arguments
-        kwargs_dl = dict(
-            batch_size=self.cfg.data.batch_size, num_workers=self.cfg.data.num_workers,
-            pin_memory=self.cfg.data.pin_memory)
-
         # Source
-        if self.args.source_dataset == 'synthia':
-            source_train_dataset = SYNTHIA_Dataset(
-                args, split=args.source_split, class_16=args.class_16, **kwargs_s_ds)
-            source_val_dataset = SYNTHIA_Dataset(
-                args, split='val', class_16=args.class_16, **kwargs_s_ds)
-        elif self.args.source_dataset == 'gta5':
-            source_train_dataset = GTA5_Dataset(
-                args, split=args.source_split, **kwargs_s_ds)
-            source_val_dataset = GTA5_Dataset(args, split='val', **kwargs_s_ds)
+        if self.cfg.data.source.dataset == 'synthia':
+            source_train_dataset = SYNTHIA_Dataset(split='train', **self.cfg.data.source.kwargs)
+            source_val_dataset = SYNTHIA_Dataset(split='val', **self.cfg.data.source.kwargs)
+        elif self.cfg.data.source.dataset == 'gta5':
+            source_train_dataset = GTA5_Dataset(split='train', **self.cfg.data.source.kwargs)
+            source_val_dataset = GTA5_Dataset(split='val', **self.cfg.data.source.kwargs)
         else:
             raise NotImplementedError()
         self.source_dataloader = DataLoader(
-            source_train_dataset, shuffle=True, drop_last=True, **kwargs_dl)
+            source_train_dataset, shuffle=True, drop_last=True, **self.cfg.data.loader.kwargs)
         self.source_val_dataloader = DataLoader(
-            source_val_dataset, shuffle=False, drop_last=False, **kwargs_dl)
+            source_val_dataset, shuffle=False, drop_last=False, **self.cfg.data.loader.kwargs)
 
         # Target
-        if self.args.target_dataset == 'cityscapes':
-            target_train_dataset = City_Dataset(
-                args, split=args.split, class_16=args.class_16, **kwargs_t_ds)
-            target_val_dataset = City_Dataset(
-                args, split='val', class_16=args.class_16, **kwargs_t_ds)
+        if self.cfg.data.target.dataset == 'cityscapes':
+            target_train_dataset = City_Dataset(split='train', **self.cfg.data.target.kwargs)
+            target_val_dataset = City_Dataset(split='val', **self.cfg.data.target.kwargs)
         else:
             raise NotImplementedError()
         self.target_dataloader = DataLoader(
-            target_train_dataset, shuffle=True, drop_last=True, **kwargs_dl)
+            target_train_dataset, shuffle=True, drop_last=True, **self.cfg.data.loader.kwargs)
         self.target_val_dataloader = DataLoader(
-            target_val_dataset, shuffle=False, drop_last=False, **kwargs_dl)
+            target_val_dataset, shuffle=False, drop_last=False, **self.cfg.data.loader.kwargs)
 
         # Perturbations
-        if self.args.lambda_aug > 0:
-            self.aug = get_augmentation(self.args.aug_type)
+        if self.cfg.lam_aug > 0:
+            self.aug = get_augmentation()
 
     def train(self):
 
         # Loop over epochs
-        for _ in trange(self.epoch, self.epoch_num, desc=f'Epoch {self.epoch}'):
+        self.continue_training = True
+        while self.continue_training:
 
             # Train for a single epoch
             self.train_one_epoch()
@@ -127,8 +111,8 @@ class Trainer():
             self.ema.model.cuda()
 
             # Validate on source (if possible) and target
-            if hasattr(self, 'source_val_dataloader'):
-                self.validate_source()
+            if self.cfg.data.source_val_iterations > 0:
+                self.validate(mode='source')
             PA, MPA, MIoU, FWIoU = self.validate()
 
             # Restore current (non-EMA) params for training
@@ -147,17 +131,17 @@ class Trainer():
                 self.best_MIou = MIoU
                 self.best_iter = self.iter
                 self.logger.info("=> Saving a new best checkpoint...")
-                self.logger.info("=> The best val MIoU is now {} from iter {}".format(
+                self.logger.info("=> The best val MIoU is now {:.3f} from iter {}".format(
                     self.best_MIou, self.best_iter))
                 self.save_checkpoint('best.pth')
             else:
                 self.logger.info("=> The MIoU of val did not improve.")
-                self.logger.info("=> The best val MIoU is still {} from iter {}".format(
+                self.logger.info("=> The best val MIoU is still {:.3f} from iter {}".format(
                     self.best_MIou, self.best_iter))
             self.epoch += 1
 
         # Save final checkpoint
-        self.logger.info("=> The best MIou was {} at iter {}".format(
+        self.logger.info("=> The best MIou was {:.3f} at iter {}".format(
             self.best_MIou, self.best_iter))
         self.logger.info(
             "=> Saving the final checkpoint to {}".format('final.pth'))
@@ -167,18 +151,18 @@ class Trainer():
 
         # Load and reset
         self.model.train()
-        self.Eval.reset()
+        self.evaluator.reset()
 
         # Helper
         def unpack(x):
-            return x[0], x[1] if isinstance(x, tuple) else x, None
+            return (x[0], x[1]) if isinstance(x, tuple) else (x, None)
 
         # Training loop
-        batch_idx = 0
-        for batch_s, batch_t in tqdm(
-            zip(self.source_dataloader, self.target_dataloader), total=self.source_dataloader.num_iterations,
-            desc=f"Epoch {self.epoch + 1}"
-        ):
+        total = min(len(self.source_dataloader), len(self.target_dataloader))
+        for batch_idx, (batch_s, batch_t) in enumerate(tqdm(
+            zip(self.source_dataloader, self.target_dataloader),
+            total=total, desc=f"Epoch {self.epoch + 1}"
+        )):
 
             # Learning rate
             self.poly_lr_scheduler(optimizer=self.optimizer)
@@ -200,9 +184,9 @@ class Trainer():
                                         dtype=torch.long, non_blocking=True)
 
                 # Fourier mix: source --> target
-                if self.args.source_fourier:
+                if self.cfg.source_fourier:
                     x = fourier_mix(src_images=x, tgt_images=batch_t[0].to(
-                        self.device), L=self.args.fourier_beta)
+                        self.device), L=self.cfg.fourier_beta)
 
                 # Forward
                 pred = self.model(x)
@@ -210,8 +194,8 @@ class Trainer():
 
                 # Loss (source)
                 loss_source_1 = self.loss(pred_1, y)
-                if self.args.multi:
-                    loss_source_2 = self.loss(pred_2, y) * self.args.lam_aux
+                if self.cfg.aux:
+                    loss_source_2 = self.loss(pred_2, y) * self.cfg.lam_aux
                     loss_source = loss_source_1 + loss_source_2
                 else:
                     loss_source = loss_source_1
@@ -221,7 +205,7 @@ class Trainer():
 
                 # Clean up
                 losses['source_main'] = loss_source_1.cpu().item()
-                if self.args.multi:
+                if self.cfg.aux:
                     losses['source_aux'] = loss_source_2.cpu().item()
                 del x, y, loss_source, loss_source_1, loss_source_2
 
@@ -242,29 +226,29 @@ class Trainer():
                 pred_P_1 = F.softmax(pred_1, dim=1)
                 label_1 = torch.argmax(pred_P_1.detach(), dim=1)
                 maxpred_1, argpred_1 = torch.max(pred_P_1.detach(), dim=1)
-                mask_1 = (maxpred_1 > self.args.threshold_aug)
+                T = self.cfg.pseudolabel_threshold
+                mask_1 = (maxpred_1 > T)
                 ignore_tensor = torch.ones(1).to(
                     self.device, dtype=torch.long) * self.ignore_index
                 label_1 = torch.where(mask_1, label_1, ignore_tensor)
-                if self.args.multi:
+                if self.cfg.aux:
                     pred_P_2 = F.softmax(pred_2, dim=1)
                     maxpred_2, argpred_2 = torch.max(pred_P_2.detach(), dim=1)
                     pred_c = (pred_P_1 + pred_P_2) / 2
                     maxpred_c, argpred_c = torch.max(pred_c, dim=1)
-                    mask = (maxpred_1 > self.args.threshold_aug) | (
-                        maxpred_2 > self.args.threshold_aug)
+                    mask = (maxpred_1 > T) | (maxpred_2 > T)
                     label_2 = torch.where(mask, argpred_c, ignore_tensor)
 
             ############
             # Aug loss #
             ############
-            if self.args.lambda_aug > 0:
+            if self.cfg.lam_aug > 0:
 
                 # Second step: augment image and label
                 x_aug, y_aug_1 = augment(
                     images=x.cpu(), labels=label_1.detach().cpu(), aug=self.aug)
                 y_aug_1 = y_aug_1.to(device=self.device, non_blocking=True)
-                if self.args.multi:
+                if self.cfg.aux:
                     _, y_aug_2 = augment(
                         images=x.cpu(), labels=label_2.detach().cpu(), aug=self.aug)
                     y_aug_2 = y_aug_2.to(device=self.device, non_blocking=True)
@@ -274,11 +258,11 @@ class Trainer():
                 pred_aug_1, pred_aug_2 = unpack(pred_aug)
 
                 # Fourth step: calculate loss
-                loss_aug_1 = self.aug_loss(pred_aug_1, y_aug_1) * \
-                    self.args.lam_aug
-                if self.args.multi:
-                    loss_aug_2 = self.aug_loss(pred_aug_2, y_aug_2) * \
-                        self.args.lam_aug * self.args.lam_aux
+                loss_aug_1 = self.loss(pred_aug_1, y_aug_1) * \
+                    self.cfg.lam_aug
+                if self.cfg.aux:
+                    loss_aug_2 = self.loss(pred_aug_2, y_aug_2) * \
+                        self.cfg.lam_aug * self.cfg.lam_aux
                     loss_aug = loss_aug_1 + loss_aug_2
                 else:
                     loss_aug = loss_aug_1
@@ -288,20 +272,20 @@ class Trainer():
 
                 # Clean up
                 losses['aug_main'] = loss_aug_1.cpu().item()
-                if self.args.multi:
+                if self.cfg.aux:
                     losses['aug_aux'] = loss_aug_2.cpu().item()
                 del pred_aug, pred_aug_1, pred_aug_2, loss_aug, loss_aug_1, loss_aug_2
 
             ################
             # Fourier Loss #
             ################
-            if self.args.lambda_fourier > 0:
+            if self.cfg.lam_fourier > 0:
 
                 # Second step: fourier mix
                 x_fourier = fourier_mix(
                     src_images=x.to(self.device),
                     tgt_images=batch_s[0].to(self.device),
-                    L=self.args.fourier_beta)
+                    L=self.cfg.fourier_beta)
 
                 # Third step: run mixed image through model to get predictions
                 pred_fourier = self.model(x_fourier.to(self.device))
@@ -309,11 +293,11 @@ class Trainer():
 
                 # Fourth step: calculate loss
                 loss_fourier_1 = self.loss(pred_fourier_1, label_1) * \
-                    self.args.lambda_fourier
+                    self.cfg.lam_fourier
 
-                if self.args.multi:
+                if self.cfg.aux:
                     loss_fourier_2 = self.loss(pred_fourier_2, label_2) * \
-                        self.args.lambda_fourier * self.args.lambda_seg
+                        self.cfg.lam_fourier * self.cfg.lam_aux
                     loss_fourier = loss_fourier_1 + loss_fourier_2
                 else:
                     loss_fourier = loss_fourier_1
@@ -323,14 +307,14 @@ class Trainer():
 
                 # Clean up
                 losses['fourier_main'] = loss_fourier_1.cpu().item()
-                if self.args.multi:
+                if self.cfg.aux:
                     losses['fourier_aux'] = loss_fourier_2.cpu().item()
                 del pred_fourier, pred_fourier_1, pred_fourier_2, loss_fourier, loss_fourier_1, loss_fourier_2
 
             ###############
             # CutMix Loss #
             ###############
-            if self.args.lambda_cutmix > 0:
+            if self.cfg.lam_cutmix > 0:
 
                 # Second step: CutMix
                 x_cutmix, y_cutmix = cutmix_combine(
@@ -346,10 +330,10 @@ class Trainer():
 
                 # Fourth step: calculate loss
                 loss_cutmix_1 = self.loss(pred_cutmix_1, y_cutmix) * \
-                    self.args.lambda_cutmix
-                if self.args.multi:
+                    self.cfg.lam_cutmix
+                if self.cfg.aux:
                     loss_cutmix_2 = self.loss(pred_cutmix_2, y_cutmix) * \
-                        self.args.lambda_cutmix * self.args.lambda_seg
+                        self.cfg.lam_cutmix * self.cfg.lam_aux
                     loss_cutmix = loss_cutmix_1 + loss_cutmix_2
                 else:
                     loss_cutmix = loss_cutmix_1
@@ -359,7 +343,7 @@ class Trainer():
 
                 # Clean up
                 losses['cutmix_main'] = loss_cutmix_1.cpu().item()
-                if self.args.multi:
+                if self.cfg.aux:
                     losses['cutmix_aux'] = loss_cutmix_2.cpu().item()
                 del pred_cutmix, pred_cutmix_1, pred_cutmix_2, loss_cutmix, loss_cutmix_1, loss_cutmix_2
 
@@ -387,12 +371,12 @@ class Trainer():
                 log_string += '\t'.join([f'{n}: {l:.3f}' for n, l in losses.items()])
                 self.logger.info(log_string)
 
-            # Increment counters
-            batch_idx += 1
+            # Increment global iteration counter
             self.iter += 1
 
-            # End training at some point
-            if self.iter > self.cfg.iterations:
+            # End training after finishing iterations
+            if self.iter > self.cfg.opt.iterations:
+                self.continue_training = False
                 return
 
         # After each epoch, update model EMA buffers (i.e. batch norm stats)
@@ -402,7 +386,7 @@ class Trainer():
     def validate(self, mode='target'):
         """Validate on target"""
         self.logger.info('Validating')
-        self.Eval.reset()
+        self.evaluator.reset()
         self.model.eval()
 
         # Select dataloader
@@ -414,11 +398,13 @@ class Trainer():
             raise NotImplementedError()
 
         # Loop
-        for x, y, id in tqdm(val_loader, desc=f"Val Epoch {self.epoch + 1}"):
-            x = x.to(self.device)
-            y = y.to(device=self.device, dtype=torch.long)
+        for val_idx, (x, y, id) in enumerate(tqdm(val_loader, desc=f"Val Epoch {self.epoch + 1}")):
+            if mode == 'source' and val_idx >= self.cfg.data.source_val_iterations:
+                break
 
             # Forward
+            x = x.to(self.device)
+            y = y.to(device=self.device, dtype=torch.long)
             pred = self.model(x)
             if isinstance(pred, tuple):
                 pred = pred[0]
@@ -428,28 +414,28 @@ class Trainer():
             argpred = np.argmax(pred.data.cpu().numpy(), axis=1)
 
             # Add to evaluator
-            self.Eval.add_batch(label, argpred)
+            self.evaluator.add_batch(label, argpred)
 
         # Tensorboard images
-        images_inv = inv_preprocess(x.clone().cpu(), 2, numpy_transform=self.args.numpy_transform)
-        labels_colors = decode_labels(label, self.args.show_num_images)
-        preds_colors = decode_labels(argpred, self.args.show_num_images)
+        vis_imgs = 2
+        images_inv = inv_preprocess(x.clone().cpu(), vis_imgs, numpy_transform=True)
+        labels_colors = decode_labels(label, vis_imgs)
+        preds_colors = decode_labels(argpred, vis_imgs)
         for index, (img, lab, predc) in enumerate(zip(images_inv, labels_colors, preds_colors)):
-            self.writer.add_image(str(index) + '/Images', img, self.epoch)
-            self.writer.add_image(str(index) + '/Labels', lab, self.epoch)
+            self.writer.add_image(str(index) + '/images', img, self.epoch)
+            self.writer.add_image(str(index) + '/labels', lab, self.epoch)
             self.writer.add_image(str(index) + '/preds', predc, self.epoch)
 
         # Calculate and log
-        print("########## Eval ############")
-        if self.args.class_16:
-            PA = Eval.Pixel_Accuracy()
-            MPA_16, MPA_13 = Eval.Mean_Pixel_Accuracy()
-            MIoU_16, MIoU_13 = Eval.Mean_Intersection_over_Union()
-            FWIoU_16, FWIoU_13 = Eval.Frequency_Weighted_Intersection_over_Union()
-            PC_16, PC_13 = Eval.Mean_Precision()
-            self.logger.info('\nEpoch:{:.3f}, PA:{:.3f}, MPA_16:{:.3f}, MIoU_16:{:.3f}, FWIoU_16:{:.3f}, PC_16:{:.3f}'.format(
+        if self.cfg.data.source.kwargs.class_16:
+            PA = self.evaluator.Pixel_Accuracy()
+            MPA_16, MPA_13 = self.evaluator.Mean_Pixel_Accuracy()
+            MIoU_16, MIoU_13 = self.evaluator.Mean_Intersection_over_Union()
+            FWIoU_16, FWIoU_13 = self.evaluator.Frequency_Weighted_Intersection_over_Union()
+            PC_16, PC_13 = self.evaluator.Mean_Precision()
+            self.logger.info('Epoch:{:.3f}, PA:{:.3f}, MPA_16:{:.3f}, MIoU_16:{:.3f}, FWIoU_16:{:.3f}, PC_16:{:.3f}'.format(
                 self.epoch, PA, MPA_16, MIoU_16, FWIoU_16, PC_16))
-            self.logger.info('\nEpoch:{:.3f}, PA:{:.3f}, MPA_13:{:.3f}, MIoU_13:{:.3f}, FWIoU_13:{:.3f}, PC_13:{:.3f}'.format(
+            self.logger.info('Epoch:{:.3f}, PA:{:.3f}, MPA_13:{:.3f}, MIoU_13:{:.3f}, FWIoU_13:{:.3f}, PC_13:{:.3f}'.format(
                 self.epoch, PA, MPA_13, MIoU_13, FWIoU_13, PC_13))
             self.writer.add_scalar('PA', PA, self.epoch)
             self.writer.add_scalar('MPA_16', MPA_16, self.epoch)
@@ -460,12 +446,12 @@ class Trainer():
             self.writer.add_scalar('FWIoU_13', FWIoU_13, self.epoch)
             PA, MPA, MIoU, FWIoU = PA, MPA_13, MIoU_13, FWIoU_13
         else:
-            PA = Eval.Pixel_Accuracy()
-            MPA = Eval.Mean_Pixel_Accuracy()
-            MIoU = Eval.Mean_Intersection_over_Union()
-            FWIoU = Eval.Frequency_Weighted_Intersection_over_Union()
-            PC = Eval.Mean_Precision()
-            self.logger.info('\nEpoch:{:.3f}, PA1:{:.3f}, MPA1:{:.3f}, MIoU1:{:.3f}, FWIoU1:{:.3f}, PC:{:.3f}'.format(
+            PA = self.evaluator.Pixel_Accuracy()
+            MPA = self.evaluator.Mean_Pixel_Accuracy()
+            MIoU = self.evaluator.Mean_Intersection_over_Union()
+            FWIoU = self.evaluator.Frequency_Weighted_Intersection_over_Union()
+            PC = self.evaluator.Mean_Precision()
+            self.logger.info('Epoch:{:.3f}, PA1:{:.3f}, MPA1:{:.3f}, MIoU1:{:.3f}, FWIoU1:{:.3f}, PC:{:.3f}'.format(
                 self.epoch, PA, MPA, MIoU, FWIoU, PC))
             self.writer.add_scalar('PA', PA, self.epoch)
             self.writer.add_scalar('MPA', MPA, self.epoch)
@@ -474,27 +460,17 @@ class Trainer():
 
         return PA, MPA, MIoU, FWIoU
 
-    def save_checkpoint(self, filename=None):
-        """
-        Save checkpoint if a new best is achieved
-        :param state:
-        :param is_best:
-        :param filepath:
-        :return:
-        """
-        filename = os.path.join(self.args.checkpoint_dir, filename)
-        state = {
+    def save_checkpoint(self, filename='checkpoint.pth'):
+        torch.save({
             'epoch': self.epoch + 1,
             'iter': self.iter,
             'state_dict': self.ema.model.state_dict(),
             'shadow': self.ema.shadow,
             'optimizer': self.optimizer.state_dict(),
             'best_MIou': self.best_MIou
-        }
-        torch.save(state, filename)
+        }, filename)
 
     def load_checkpoint(self, filename):
-        self.logger.info("Loading checkpoint '{}'".format(filename))
         checkpoint = torch.load(filename, map_location='cpu')
 
         # Get model state dict
@@ -548,14 +524,14 @@ def main(cfg: DictConfig):
     # Logger
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
-    logfile = 'train_log.txt' if cfg.train else 'eval_log.txt'
-    fh = logging.FileHandler(logfile)
-    ch = logging.StreamHandler()
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(message)s')
-    fh.setFormatter(formatter)
-    ch.setFormatter(formatter)
-    logger.addHandler(fh)
-    logger.addHandler(ch)
+    # logfile = 'train_log.txt' if cfg.train else 'eval_log.txt'
+    # fh = logging.FileHandler(logfile)
+    # ch = logging.StreamHandler()
+    # formatter = logging.Formatter('%(asctime)s - %(name)s - %(message)s')
+    # fh.setFormatter(formatter)
+    # ch.setFormatter(formatter)
+    # logger.addHandler(fh)
+    # logger.addHandler(ch)
 
     # Monitoring
     writer = SummaryWriter(cfg.name)
@@ -567,12 +543,12 @@ def main(cfg: DictConfig):
     trainer = Trainer(cfg=cfg, logger=logger, writer=writer)
 
     # Load pretrained checkpoint
-    if Path(cfg.checkpoint).is_file():
-        trainer.load_checkpoint(cfg.checkpoint)
+    if Path(cfg.model.checkpoint).is_file():
+        trainer.load_checkpoint(cfg.model.checkpoint)
 
     # Validate
     logger.info('Pre-training validation:')
-    trainer.validate()
+    # trainer.validate()  # TODO
 
     # Train
     trainer.train()

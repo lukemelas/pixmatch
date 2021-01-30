@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
-import copy
 import random
-import scipy.io
+from collections.abc import Iterable
 from PIL import Image, ImageOps, ImageFilter, ImageFile
 import numpy as np
 import os
 import torch
 import torch.utils.data as data
-import torchvision.transforms as ttransforms
+
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -104,53 +103,46 @@ name_classes = [
 ]
 
 
+def to_tuple(x):
+    return x if isinstance(x, Iterable) else (x, x)
+
+
 class City_Dataset(data.Dataset):
-    def __init__(self,
-                 args,
-                 data_root_path=os.path.abspath('./datasets/Cityscapes'),
-                 list_path=os.path.abspath('./datasets/city_list'),
-                 split='train',
-                 base_size=769,
-                 crop_size=769,
-                 training=True,
-                 class_16=False,
-                 class_13=False):
-        """
-
-        :param root_path:
-        :param dataset:
-        :param base_size:
-        :param is_trainging:
-        :param transforms:
-        """
-        self.args = args
-        self.data_path = data_root_path
-        self.list_path = list_path
+    def __init__(
+        self,
+        root,
+        list,
+        split='train',
+        base_size=769,
+        crop_size=769,
+        training=True,
+        random_mirror=False,
+        random_crop=False,
+        resize=False,
+        gaussian_blur=False,
+        class_16=False,
+        class_13=False,
+    ):
+        self.data_path = root
+        self.list_path = list
         self.split = split
-        self.base_size = base_size
-        self.crop_size = crop_size
-
-        self.base_size = self.base_size if isinstance(
-            self.base_size, tuple) else (self.base_size, self.base_size)
-        self.crop_size = self.crop_size if isinstance(
-            self.crop_size, tuple) else (self.crop_size, self.crop_size)
+        self.base_size = to_tuple(base_size)
+        self.crop_size = to_tuple(crop_size)
         self.training = training
 
-        self.random_mirror = args.random_mirror
-        self.random_crop = args.random_crop
-        self.resize = args.resize
-        self.gaussian_blur = args.gaussian_blur
+        # Augmentations
+        self.random_mirror = random_mirror
+        self.random_crop = random_crop
+        self.resize = resize
+        self.gaussian_blur = gaussian_blur
 
+        # Files
         item_list_filepath = os.path.join(self.list_path, self.split + ".txt")
         if not os.path.exists(item_list_filepath):
             raise Warning("split must be train/val/trainval")
-
         self.image_filepath = os.path.join(self.data_path, "leftImg8bit")
-
         self.gt_filepath = os.path.join(self.data_path, "gtFine")
-
         self.items = [id.strip() for id in open(item_list_filepath)]
-
         self.id_to_trainid = cityscapes_id_to_trainid
 
         # In SYNTHIA-to-Cityscapes case, only consider 16 shared classes
@@ -166,8 +158,6 @@ class City_Dataset(data.Dataset):
 
         print("{} num images in Cityscapes {} set have been loaded.".format(
             len(self.items), self.split))
-        if self.args.numpy_transform:
-            print("use numpy_transform, instead of tensor transform!")
 
     def id2trainId(self, label, reverse=False, ignore_label=-1):
         label_copy = ignore_label * np.ones(label.shape, dtype=np.float32)
@@ -304,18 +294,18 @@ class City_Dataset(data.Dataset):
         return img, mask
 
     def _img_transform(self, image):
-        if self.args.numpy_transform:
-            image = np.asarray(image, np.float32)
-            image = image[:, :, ::-1]  # change to BGR
-            image -= IMG_MEAN
-            image = image.transpose((2, 0, 1)).copy()  # (C x H x W)
-            new_image = torch.from_numpy(image)
-        else:
-            image_transforms = ttransforms.Compose([
-                ttransforms.ToTensor(),
-                ttransforms.Normalize([.485, .456, .406], [.229, .224, .225]),
-            ])
-            new_image = image_transforms(image)
+        # if self.args.numpy_transform:
+        image = np.asarray(image, np.float32)
+        image = image[:, :, ::-1]  # change to BGR
+        image -= IMG_MEAN
+        image = image.transpose((2, 0, 1)).copy()  # (C x H x W)
+        new_image = torch.from_numpy(image)
+        # else:
+        #     image_transforms = ttransforms.Compose([
+        #         ttransforms.ToTensor(),
+        #         ttransforms.Normalize([.485, .456, .406], [.229, .224, .225]),
+        #     ])
+        #     new_image = image_transforms(image)
         return new_image
 
     def _mask_transform(self, gt_image):
@@ -327,64 +317,6 @@ class City_Dataset(data.Dataset):
 
     def __len__(self):
         return len(self.items)
-
-
-class City_DataLoader():
-    def __init__(self, args, training=True):
-        self.args = args
-
-        # Train
-        data_set = City_Dataset(
-            args,
-            data_root_path='./datasets/Cityscapes',
-            list_path='./datasets/city_list',
-            split=args.split,
-            base_size=args.base_size,
-            crop_size=args.crop_size,
-            training=training,
-            class_16=args.class_16,
-            class_13=args.class_13)
-        if (self.args.split == "train" or self.args.split == "trainval") and training:
-            self.data_loader = data.DataLoader(
-                data_set,
-                batch_size=self.args.batch_size,
-                shuffle=True,
-                num_workers=self.args.data_loader_workers,
-                pin_memory=self.args.pin_memory,
-                drop_last=True)
-        else:
-            self.data_loader = data.DataLoader(
-                data_set,
-                batch_size=self.args.batch_size,
-                shuffle=False,
-                num_workers=self.args.data_loader_workers,
-                pin_memory=self.args.pin_memory,
-                drop_last=True)
-
-        # Val
-        val_set = City_Dataset(
-            args,
-            data_root_path='./datasets/Cityscapes',
-            list_path='./datasets/city_list',
-            split='val',
-            base_size=args.base_size,
-            crop_size=args.crop_size,
-            training=False,
-            class_16=args.class_16,
-            class_13=args.class_13)
-        self.val_loader = data.DataLoader(
-            val_set,
-            batch_size=self.args.batch_size,
-            shuffle=False,
-            num_workers=self.args.data_loader_workers,
-            pin_memory=self.args.pin_memory,
-            drop_last=True)
-
-        # Stats
-        self.valid_iterations = (
-            len(val_set) + self.args.batch_size) // self.args.batch_size
-        self.num_iterations = (
-            len(data_set) + self.args.batch_size) // self.args.batch_size
 
 
 def flip(x, dim):

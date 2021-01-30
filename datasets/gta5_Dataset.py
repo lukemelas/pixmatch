@@ -2,43 +2,43 @@
 from PIL import Image, ImageFile
 import os
 import torch
-import torch.utils.data as data
-
-from datasets.cityscapes_Dataset import City_Dataset
+from datasets.cityscapes_Dataset import City_Dataset, to_tuple
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
-
-
-def to_tuple(x):
-    return x if isinstance(x, tuple) else (x, x)
 
 
 class GTA5_Dataset(City_Dataset):
     def __init__(
         self,
-        data_root_path='./datasets/GTA5',
-        list_path='./datasets/GTA5/list',
+        root='./datasets/GTA5',
+        list='./datasets/GTA5/list',
         split='train',
         base_size=769,
         crop_size=769,
-        training=True
+        training=True,
+        random_mirror=False,
+        random_crop=False,
+        resize=False,
+        gaussian_blur=False,
+        class_16=False
     ):
 
         # Args
-        self.data_path = data_root_path
-        self.list_path = list_path
+        self.data_path = root
+        self.list_path = list
         self.split = split
         self.base_size = to_tuple(base_size)
         self.crop_size = to_tuple(crop_size)
         self.training = training
         self.class_16 = False
         self.class_13 = False
+        assert class_16 == False
 
         # Augmentation
-        self.random_mirror = args.random_mirror
-        self.random_crop = args.random_crop
-        self.resize = args.resize
-        self.gaussian_blur = args.gaussian_blur
+        self.random_mirror = random_mirror
+        self.random_crop = random_crop
+        self.resize = resize
+        self.gaussian_blur = gaussian_blur
 
         # Files
         item_list_filepath = os.path.join(self.list_path, self.split + ".txt")

@@ -7,30 +7,42 @@ wandb: False
 
 data:
 
+  num_classes: 19
+
   source:
     dataset: 'gta5'
-    root:
-    list:
-    base_size: [1280, 720]
-    crop_size: [1280, 720]
+    kwargs:
+      root: ${root}/datasets/GTA5
+      list: ${root}/datasets/gta5_list
+      base_size: [1280, 720]
+      crop_size: [1280, 720]
+      random_mirror: True
+      random_crop: False
+      resize: True
+      gaussian_blur: True
+      class_16: False
 
   target:
     dataset: 'cityscapes'
-    root:
-    list:
-    base_size: [1280, 640]
-    crop_size: [1280, 640]
+    kwargs:
+      root: ${root}/datasets/Cityscapes
+      list: ${root}/datasets/city_list
+      base_size: [1280, 640]
+      crop_size: [1280, 640]
+      random_mirror: True
+      random_crop: False
+      resize: True
+      gaussian_blur: True
+      class_16: False
+      class_13: False
 
-  split: train
-  num_classes: 19
-  num_workers: 4
-  pin_memory: 2
-  numpy_transform: True
-  random_mirror: True
-  random_crop: False
-  resize: True
-  gaussian_blur: True
+  loader:
+    kwargs:
+      batch_size: 1
+      num_workers: 4
+      pin_memory: True
 
+  source_val_iterations: 100
 
 model:
   backbone: deeplabv2_multi
@@ -54,6 +66,10 @@ ema_decay: 0.999
 
 # Perturbations
 pseudolabel_threshold: 0.0
-lam_aug: 0.0
-lam_fourier: 0.0
-lam_cutmix: 0.0
+lam_aug: 0.1
+lam_fourier: 0.1
+lam_cutmix: 0.1
+
+# Fourier
+source_fourier: False
+fourier_beta: 0.01
