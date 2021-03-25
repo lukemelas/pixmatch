@@ -509,7 +509,7 @@ class Trainer():
             optimizer.param_groups[1]["lr"] = 10 * new_lr
 
 
-@hydra.main(config_path='configs', config_name='default')
+@hydra.main(config_path='configs', config_name='gta5')
 def main(cfg: DictConfig):
 
     # Seeds
