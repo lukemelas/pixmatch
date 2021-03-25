@@ -12,7 +12,6 @@ import numpy as np
 import hydra
 from omegaconf import OmegaConf, DictConfig
 from torch.utils.tensorboard import SummaryWriter
-import wandb
 
 from datasets.cityscapes_Dataset import City_Dataset, inv_preprocess, decode_labels
 from datasets.gta5_Dataset import GTA5_Dataset
@@ -510,11 +509,8 @@ class Trainer():
             optimizer.param_groups[1]["lr"] = 10 * new_lr
 
 
-@ hydra.main(config_path='configs', config_name='default')
+@hydra.main(config_path='configs', config_name='default')
 def main(cfg: DictConfig):
-
-    # Configuration
-    print(OmegaConf.to_yaml(cfg))
 
     # Seeds
     random.seed(cfg.seed)
@@ -524,31 +520,27 @@ def main(cfg: DictConfig):
     # Logger
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
-    # logfile = 'train_log.txt' if cfg.train else 'eval_log.txt'
-    # fh = logging.FileHandler(logfile)
-    # ch = logging.StreamHandler()
-    # formatter = logging.Formatter('%(asctime)s - %(name)s - %(message)s')
-    # fh.setFormatter(formatter)
-    # ch.setFormatter(formatter)
-    # logger.addHandler(fh)
-    # logger.addHandler(ch)
 
     # Monitoring
-    writer = SummaryWriter(cfg.name)
     if cfg.wandb:
-        wandb.init(project='pixmatch', name=cfg.name,
-                   config=cfg, sync_tensorboard=True)
+        import wandb
+        wandb.init(project='pixmatch', name=cfg.name, config=cfg, sync_tensorboard=True)
+    writer = SummaryWriter(cfg.name)
 
     # Trainer
     trainer = Trainer(cfg=cfg, logger=logger, writer=writer)
 
     # Load pretrained checkpoint
-    if Path(cfg.model.checkpoint).is_file():
+    if cfg.model.checkpoint:
+        assert Path(cfg.model.checkpoint).is_file(), f'not a file: {cfg.model.checkpoint}'
         trainer.load_checkpoint(cfg.model.checkpoint)
+
+    # Print configuration
+    logger.info(OmegaConf.to_yaml(cfg))
 
     # Validate
     logger.info('Pre-training validation:')
-    # trainer.validate()  # TODO
+    # trainer.validate()  # TODO: decide about this
 
     # Train
     trainer.train()

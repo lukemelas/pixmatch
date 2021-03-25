@@ -14,7 +14,7 @@ synthia_set_16 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 15, 17, 18]
 class SYNTHIA_Dataset(City_Dataset):
     def __init__(
         self,
-        data_root_path='./datasets/SYNTHIA',
+        root='./datasets/SYNTHIA',
         list_path='./datasets/SYNTHIA/list',
         split='train',
         base_size=769,
@@ -28,7 +28,7 @@ class SYNTHIA_Dataset(City_Dataset):
     ):
 
         # Args
-        self.data_path = data_root_path
+        self.data_path = root
         self.list_path = list_path
         self.split = split
         self.base_size = to_tuple(base_size)

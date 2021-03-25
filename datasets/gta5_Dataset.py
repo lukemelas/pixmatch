@@ -11,7 +11,7 @@ class GTA5_Dataset(City_Dataset):
     def __init__(
         self,
         root='./datasets/GTA5',
-        list='./datasets/GTA5/list',
+        list_path='./datasets/GTA5/list',
         split='train',
         base_size=769,
         crop_size=769,
@@ -25,7 +25,7 @@ class GTA5_Dataset(City_Dataset):
 
         # Args
         self.data_path = root
-        self.list_path = list
+        self.list_path = list_path
         self.split = split
         self.base_size = to_tuple(base_size)
         self.crop_size = to_tuple(crop_size)

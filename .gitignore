@@ -5,7 +5,8 @@ logs
 wandb
 .vscode/
 .DS_Store
-pretrained
+pretrained/*
+!pretrained/download.sh
 logs/*/*/*.pth
 datasets/Cityscapes
 datasets/GTA5

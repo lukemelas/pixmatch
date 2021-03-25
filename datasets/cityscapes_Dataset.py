@@ -111,7 +111,7 @@ class City_Dataset(data.Dataset):
     def __init__(
         self,
         root,
-        list,
+        list_path,
         split='train',
         base_size=769,
         crop_size=769,
@@ -124,7 +124,7 @@ class City_Dataset(data.Dataset):
         class_13=False,
     ):
         self.data_path = root
-        self.list_path = list
+        self.list_path = list_path
         self.split = split
         self.base_size = to_tuple(base_size)
         self.crop_size = to_tuple(crop_size)

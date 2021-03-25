@@ -3,7 +3,7 @@ name: debug
 root: /home/luke/projects/experiments/pixmatch
 train: True
 seed: 42
-wandb: False
+wandb: True
 
 data:
 
@@ -13,7 +13,7 @@ data:
     dataset: 'gta5'
     kwargs:
       root: ${root}/datasets/GTA5
-      list: ${root}/datasets/gta5_list
+      list_path: ${root}/datasets/gta5_list
       base_size: [1280, 720]
       crop_size: [1280, 720]
       random_mirror: True
@@ -25,8 +25,8 @@ data:
   target:
     dataset: 'cityscapes'
     kwargs:
-      root: ${root}/datasets/Cityscapes
-      list: ${root}/datasets/city_list
+      root: ${root}/datasets/cityscapes
+      list_path: ${root}/datasets/city_list
       base_size: [1280, 640]
       crop_size: [1280, 640]
       random_mirror: True
@@ -54,7 +54,7 @@ opt:
   momentum: 0.9
   weight_decay: 5e-4
   lr: 1e-4
-  iterations: 250000
+  iterations: 40000
   poly_power: 0.9
 
 # For auxiliary mode output
@@ -66,9 +66,9 @@ ema_decay: 0.999
 
 # Perturbations
 pseudolabel_threshold: 0.0
-lam_aug: 0.1
-lam_fourier: 0.1
-lam_cutmix: 0.1
+lam_aug: 0.0
+lam_fourier: 0.0
+lam_cutmix: 0.0
 
 # Fourier
 source_fourier: False
