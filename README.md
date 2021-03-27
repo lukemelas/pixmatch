@@ -4,7 +4,6 @@
 
 [![Paper](http://img.shields.io/badge/paper-arxiv.1001.2234-B31B1B.svg)](https://www.nature.com/articles/nature14539)
 [![Conference](http://img.shields.io/badge/CVPR-2021-4b44ce.svg)](https://papers.nips.cc/book/advances-in-neural-information-processing-systems-31-2018)
-[![Paper](http://img.shields.io/badge/arxiv-math.co:1480.1111-B31B1B.svg)](https://www.nature.com/articles/nature14539)
 
 </div>
  
@@ -19,33 +18,24 @@ Unsupervised domain adaptation is a promising technique for semantic segmentatio
  - Other: `pip install albumentations tqdm tensorboard`
  - WandB (optional): `pip install wandb`
 
-#### Training
-**General**
-
+#### General
 We use Hydra for configuration and Weights and Biases for logging. With Hydra, you can specify a config file (found in `configs/`) with `--config-name=myconfig.yaml`. You can also override the config from the command line by specifying the overriding arguments (without `--`). For example, you can disable Weights and Biases with `wandb=False` and you can name the run with `name=myname`. 
 
 We have prepared example configs for GTA5 and SYNTHIA in `configs/gta5.yaml` and `configs/synthia.yaml`.
 
-**General**
-
+#### Data Preparation
 To run on GTA5-to-Cityscapes and SYNTHIA-to-Cityscapes, you need to download the respective datasets. Once they are downloaded, you can either modify the config files directly, or organize/symlink the data in the `datasets/` directory as follows: 
 ```
 datasets
 ├── cityscapes
 │   ├── gtFine
 │   │   ├── train
-│   │   │   ├── ...
-│   │   │   └── zurich
+│   │   │   ├── aachen
+│   │   │   └── ...
 │   │   └── val
-│   │       ├── ...
-│   │       └── munster
 │   └── leftImg8bit
 │       ├── train
-│       │   ├── ...
-│       │   └── zurich
 │       └── val
-│           ├── ...
-│           └── munster
 ├── GTA5
 │   ├── images
 │   ├── labels
@@ -64,12 +54,11 @@ datasets
 └── synthia_list
 ```
 
-**Initial Models**
-For GTA5-to-Cityscapes, we start with a model pretrained on the source (GTA5): [Google Drive](https://drive.google.com/file/d/1KP37cQo_9NEBczm7pvq_zEmmosdhxvlF/view)
+#### Initial Models
+ * For GTA5-to-Cityscapes, we start with a model pretrained on the source (GTA5): [Download](https://github.com/lukemelas/pixmatch/releases/download/v1.0.0/GTA5_source.pth)
+ * For SYNTHIA-to-Cityscapes, we start with a model pretrained on ImageNet: [Download](http://vllab.ucmerced.edu/ytsai/CVPR18/DeepLab_resnet_pretrained_init-f81d91e8.pth)
 
-For SYNTHIA-to-Cityscapes, we start with a model pretrained on ImageNet: [Direct Link](http://vllab.ucmerced.edu/ytsai/CVPR18/DeepLab_resnet_pretrained_init-f81d91e8.pth)
-
-**SYNTHIA-to-Cityscapes**
+#### SYNTHIA-to-Cityscapes
 To run a baseline PixMatch model with standard data augmentations, we can use a command such as:
 ```bash
 python main.py --config-name=synthia lam_aug=0.10 name=synthia_baseline
@@ -79,20 +68,29 @@ It is also easy to run a model with multiple augmentations:
 python main.py --config-name=synthia lam_aug=0.00 lam_fourier=0.10 lam_cutmix=0.10 name=synthia_fourier_and_cutmix
 ```
 
-##### GTA5-to-Cityscapes
+#### GTA5-to-Cityscapes
 
 ```bash
 python main.py --config-name=synthia lam_aug=0.10 name=synthia_baseline
 ```
 
-#### Pretrained models
- * GTA5-to-Cityscapes: [Google Drive]()
- * SYNTHIA-to-Cityscapes: [Google Drive]()
-
 #### Evaluation
-<!-- TODO: Add description -->
+To evaluate, simply set the `train` argument to False:
 ```bash
 python main.py train=False
+```
+
+#### Pretrained models
+ * GTA5-to-Cityscapes: [Download](https://github.com/lukemelas/pixmatch/releases/download/v1.0.0/GTA5-to-Cityscapes-checkpoint.pth)
+ * SYNTHIA-to-Cityscapes: [Download](https://github.com/lukemelas/pixmatch/releases/download/v1.0.0/SYNTHIA-to-Cityscapes-checkpoint.pth)
+
+To evaluate a pretrained/trained model, you can run: 
+```bash
+# GTA (default)
+CUDA_VISIBLE_DEVICES=3 python main.py train=False wandb=False model.checkpoint=$(pwd)/pretrained/GTA5-to-Cityscapes-checkpoint.pth
+
+# SYNTHIA
+CUDA_VISIBLE_DEVICES=3 python main.py --config-name synthia train=False wandb=False model.checkpoint=$(pwd)/pretrained/GTA5-to-Cityscapes-checkpoint.pth
 ```
 
 #### Citation   
@@ -103,4 +101,4 @@ python main.py train=False
   booktitle = cvpr,
   year      = {2021}
 }
-```   
+```

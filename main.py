@@ -473,7 +473,7 @@ class Trainer():
         checkpoint = torch.load(filename, map_location='cpu')
 
         # Get model state dict
-        if 'shadow' in checkpoint:
+        if not self.cfg.train and 'shadow' in checkpoint:
             state_dict = checkpoint['shadow']
         elif 'state_dict' in checkpoint:
             state_dict = checkpoint['state_dict']
@@ -492,11 +492,16 @@ class Trainer():
         self.logger.info(f"Model loaded successfully from {filename}")
 
         # Load optimizer and epoch
-        if 'optimizer' in checkpoint and 'epoch' in checkpoint:
-            self.optimizer.load_state_dict(checkpoint['optimizer'])
-            self.epoch = checkpoint['epoch']
-            self.iter = checkpoint['iter']
-            self.logger.info(f"Optimizer loaded successfully from {filename}")
+        if self.cfg.train and self.cfg.model.resume_from_checkpoint:
+            if 'optimizer' in checkpoint:
+                self.optimizer.load_state_dict(checkpoint['optimizer'])
+                self.logger.info(f"Optimizer loaded successfully from {filename}")
+            if 'epoch' in checkpoint and 'iter' in checkpoint:
+                self.epoch = checkpoint['epoch']
+                self.iter = checkpoint['iter'] if 'iter' in checkpoint else checkpoint['iteration']
+                self.logger.info(f"Resuming training from epoch {self.epoch} iter {self.iter}")
+        else:
+            self.logger.info(f"Did not resume optimizer")
 
     def poly_lr_scheduler(self, optimizer, init_lr=None, iter=None, max_iter=None, power=None):
         init_lr = self.cfg.opt.lr if init_lr is None else init_lr
@@ -536,14 +541,17 @@ def main(cfg: DictConfig):
         trainer.load_checkpoint(cfg.model.checkpoint)
 
     # Print configuration
-    logger.info(OmegaConf.to_yaml(cfg))
-
-    # Validate
-    logger.info('Pre-training validation:')
-    # trainer.validate()  # TODO: decide about this
+    logger.info('\n' + OmegaConf.to_yaml(cfg))
 
     # Train
-    trainer.train()
+    if cfg.train:
+        trainer.train()
+
+    # Evaluate
+    else:
+        trainer.validate()
+        trainer.evaluator.Print_Every_class_Eval(
+            out_16_13=(int(cfg.data.num_classes) in [16, 13]))
 
 
 if __name__ == '__main__':

@@ -48,6 +48,7 @@ model:
   backbone: deeplabv2_multi
   imagenet_pretrained: ${root}/pretrained/DeepLab_resnet_pretrained_init-f81d91e8.pth
   checkpoint: "${root}/pretrained/GTA5_source.pth"
+  resume_from_checkpoint: True
 
 opt:
   kind: "SGD"

@@ -413,3 +413,19 @@ def inspect_decode_labels(pred, num_images=1, num_classes=NUM_CLASSES,
                         map(lambda x: int(inspect_ratio[it] * x), label_colours[k_class]))
         outputs[i] = np.array(img)
     return torch.from_numpy(outputs.transpose([0, 3, 1, 2]).astype('float32')).div_(255.0)
+
+
+class DemoVideo_City_Dataset(City_Dataset):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        assert self.split == 'demoVideo'
+
+    def __getitem__(self, item):
+        id = self.items[item]
+        folder = '_'.join(id.split('_')[:2])
+        filename = '_'.join(id.split('_')[2:])
+        image_filename = folder + '_' + filename + "_leftImg8bit.png"
+        image_path = os.path.join(self.image_filepath, 'demoVideo', folder, image_filename)
+        image = Image.open(image_path).convert("RGB")
+        image, _ = self._val_sync_transform(image, image)
+        return image, filename, item
