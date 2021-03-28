@@ -6,7 +6,9 @@
 [![Conference](http://img.shields.io/badge/CVPR-2021-4b44ce.svg)](https://papers.nips.cc/book/advances-in-neural-information-processing-systems-31-2018)
 
 </div>
- 
+
+<!-- TODO: Add video -->
+
 ### Description   
 Unsupervised domain adaptation is a promising technique for semantic segmentation and other computer vision tasks for which large-scale data annotation is costly and time-consuming. In semantic segmentation particularly, it is attractive to train models on annotated images from a simulated (source) domain and deploy them on real (target) domains. In this work, we present a novel framework for unsupervised domain adaptation based on the notion of target-domain consistency training. Intuitively, our work is based on the insight that in order to perform well on the target domain, a model’s output should be consistent with respect to small perturbations of inputs in the target domain. Specifically, we introduce a new loss term to enforce pixelwise consistency between the model's predictions on a target image and perturbed version of the same image. In comparison to popular adversarial adaptation methods, our approach is simpler, easier to implement, and more memory-efficient during training. Experiments and extensive ablation studies demonstrate that our simple approach achieves remarkably strong results on two challenging synthetic-to-real benchmarks, GTA5-to-Cityscapes and SYNTHIA-to-Cityscapes. 
 
@@ -71,7 +73,7 @@ python main.py --config-name=synthia lam_aug=0.00 lam_fourier=0.10 lam_cutmix=0.
 #### GTA5-to-Cityscapes
 
 ```bash
-python main.py --config-name=synthia lam_aug=0.10 name=synthia_baseline
+python main.py --config-name=synthia lam_aug=0.10 name=gta5_baseline
 ```
 
 #### Evaluation

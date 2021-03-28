@@ -428,4 +428,4 @@ class DemoVideo_City_Dataset(City_Dataset):
         image_path = os.path.join(self.image_filepath, 'demoVideo', folder, image_filename)
         image = Image.open(image_path).convert("RGB")
         image, _ = self._val_sync_transform(image, image)
-        return image, filename, item
+        return image, image_path, item
