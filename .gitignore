@@ -19,3 +19,5 @@ tmp
 */.ipynb_checkpoints
 *.code-workspace
 todo
+.next/
+node_modules/
