@@ -6,7 +6,7 @@ import NextLink from 'next/link'
 
 const links = {
   'paper': "https://arxiv.org/abs/2002.00733",
-  'github': "https://github.com/lukemelas"
+  'github': "https://github.com/lukemelas/pixmatch"
 }
 
 export const LinksRow = () => (

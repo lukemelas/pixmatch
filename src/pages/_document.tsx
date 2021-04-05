@@ -1,8 +1,8 @@
 import NextDocument, { Html, Head, Main, NextScript } from 'next/document'
 import { ColorModeScript } from '@chakra-ui/react'
 
-const pageTitle = "Project Title"
-const description = "This is my description..."
+const pageTitle = "PixMatch: Unsupervised Domain Adaptation via Pixelwise Consistency Training"
+const description = "We introduce a new loss term to enforce pixelwise consistency between the model's predictions on a target image and a perturbed version of the same image. In comparison to popular adversarial adaptation methods, our approach is simpler, easier to implement, and more memory-efficient during training. Experiments and extensive ablation studies demonstrate that our simple approach achieves remarkably strong results on two challenging synthetic-to-real benchmarks, GTA5-to-Cityscapes and SYNTHIA-to-Cityscapes."
 
 
 export default class Document extends NextDocument {
