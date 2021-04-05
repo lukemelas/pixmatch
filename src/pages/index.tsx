@@ -35,12 +35,12 @@ const Index = () => (
 
       {/* Example */}
       <Heading fontSize="2xl" pb="1rem">Approach</Heading>
-      <ChakraImage src={`${process.env.BASE_PATH || ""}/images/diagram.jpg`} />
+      <img src={`${process.env.BASE_PATH || ""}/images/diagram.jpg`} />
       <Text align="center" pt="0.5rem" pb="0.5rem" fontSize="small">Our proposed pixelwise consistency training approach.</Text>
 
       {/* Another Section */}
       <Heading fontSize="2xl" pt="2rem" pb="1rem">Examples</Heading>
-      <ChakraImage src={`${process.env.BASE_PATH || ""}/images/example-synthia.jpg`} />
+      <img src={`${process.env.BASE_PATH || ""}/images/example-synthia.jpg`} />
       <Text align="center" pt="0.5rem" pb="0.5rem" fontSize="small">Qualitative results on SYNTHIA-to-Cityscapes</Text>
 
 
