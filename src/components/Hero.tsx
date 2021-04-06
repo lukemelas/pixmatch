@@ -10,7 +10,7 @@ const institutions = {
 
 const authors = [
   {
-    'name': 'Luke Melas-Kyraizi',
+    'name': 'Luke Melas-Kyriazi',
     'institutions': [1, 2],
     'url': "https://lukemelas.github.io/"
   },
