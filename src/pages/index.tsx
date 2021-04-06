@@ -63,16 +63,24 @@ const Index = () => (
       <Heading fontSize="2xl" pt="2rem" pb="1rem">Related Work</Heading>
       <UnorderedList>
         <ListItem>
-          <Text color="blue">
-            <NextLink href="#" passHref={true}>
-              First paper
+          <Text color="gray">
+            <Box color="black" d="inline-block" pr="0.5rem">(Coming Soon)</Box>
+            <NextLink href="#">
+              DomainMix: Improving Domain Adaptation by Adversarial Self-Training with Mixed Source and Target Data
             </NextLink>
           </Text>
         </ListItem>
         <ListItem>
           <Text color="blue">
-            <NextLink href="#" passHref={true}>
-              Second paper
+            <NextLink href="https://github.com/ZJULearning/MaxSquareLoss">
+              Domain Adaptation for Semantic Segmentation with Maximum Squares Loss
+            </NextLink>
+          </Text>
+        </ListItem>
+        <ListItem>
+          <Text color="blue">
+            <NextLink href="https://github.com/valeoai/ADVENT">
+              ADVENT: Adversarial Entropy Minimization for Domain Adaptation in Semantic Segmentation
             </NextLink>
           </Text>
         </ListItem>
