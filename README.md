@@ -96,8 +96,8 @@ CUDA_VISIBLE_DEVICES=3 python main.py --config-name synthia train=False wandb=Fa
 ```
 
 #### Citation   
-```
-@inproceedings{pixmatch,
+```bibtex
+@inproceedings{melaskyriazi2021pixmatch,
   author    = {Melas-Kyriazi, Luke and Manrai, Arjun},
   title     = {PixMatch: Unsupervised Domain Adaptation via Pixelwise Consistency Training},
   booktitle = cvpr,
