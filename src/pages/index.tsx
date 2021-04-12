@@ -36,12 +36,16 @@ const Index = () => (
       {/* Example */}
       <Heading fontSize="2xl" pb="1rem">Approach</Heading>
       <img src={`${process.env.BASE_PATH || ""}/images/diagram.jpg`} />
-      <Text align="center" pt="0.5rem" pb="0.5rem" fontSize="small">Our proposed pixelwise consistency training approach.</Text>
+      <Text align="center" pt="0.5rem" pb="0.5rem" fontSize="small">
+        Our proposed unsupervised domain adaptation approach for semantic segmentation, PixMatch, which employs consistency training and pseudolabeling to enforce consistency on the target domain.
+      </Text>
 
       {/* Another Section */}
       <Heading fontSize="2xl" pt="2rem" pb="1rem">Examples</Heading>
       <img src={`${process.env.BASE_PATH || ""}/images/example-synthia.jpg`} />
-      <Text align="center" pt="0.5rem" pb="0.5rem" fontSize="small">Qualitative results on SYNTHIA-to-Cityscapes</Text>
+      <Text align="center" pt="0.5rem" pb="0.5rem" fontSize="small">
+        Qualitative examples of our consistency training method and prior methods on SYNTHIA-to-Cityscapes. The final column shows our baseline model with augmentation-based perturbations. Note that these images are not hand-picked; they are the first 5 images in the Cityscapes validation set.
+      </Text>
 
 
       {/* Citation */}
