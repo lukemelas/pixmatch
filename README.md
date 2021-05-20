@@ -3,8 +3,8 @@
 ## PixMatch: Unsupervised Domain Adaptation via Pixelwise Consistency Training
 
 [![Paper](http://img.shields.io/badge/paper-arxiv.2105.08128-B31B1B.svg)](https://arxiv.org/abs/2105.08128)
-[![Conference](http://img.shields.io/badge/CVPR-2021-4b44ce.svg)](https://arxiv.org/abs/2105.08128)
-
+[![Conference](http://img.shields.io/badge/CVPR-2021-4b44ce.svg)](#)
+[![Project Page](http://img.shields.io/badge/🔗-Website-6b646e.svg)](https://lukemelas.github.io/pixmatch/)
 </div>
 
 <!-- TODO: Add video -->
