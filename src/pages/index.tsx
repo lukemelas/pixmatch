@@ -16,14 +16,14 @@ const Index = () => (
     <LinksRow />
 
     {/* TODO: Add video */}
-    <Container w="90vw" h="50.6vw" maxW="700px" maxH="393px" mb="3rem">
+    {/* <Container w="90vw" h="50.6vw" maxW="700px" maxH="393px" mb="3rem">
       <iframe
         width="100%" height="100%"
         src="https://www.youtube.com/embed/ScMzIvxBSi4"
         title="Video"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen>
       </iframe>
-    </Container>
+    </Container> */}
 
     <Container w="100%" maxW="44rem" alignItems="left" pl="1rem" pr="1rem">
 
@@ -54,7 +54,7 @@ const Index = () => (
         <Code p="0.5rem" borderRadius="5px" w="max-content">
           {/* w="150%"> */}
           @inproceedings&#123; <br />
-          &nbsp;&nbsp;&nbsp;&nbsp;yu2021plenoctrees, <br />
+          &nbsp;&nbsp;&nbsp;&nbsp;melaskyriazi2021pixmatch, <br />
           &nbsp;&nbsp;&nbsp;&nbsp;title=&#123;PixMatch: Unsupervised Domain Adaptation via Pixelwise Consistency Training&#125; <br />
           &nbsp;&nbsp;&nbsp;&nbsp;author=&#123;Luke Melas-Kyriazi and Arjun K. Manrai&#125; <br />
           &nbsp;&nbsp;&nbsp;&nbsp;year=&#123;2021&#125; <br />

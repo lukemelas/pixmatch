@@ -5,7 +5,7 @@ import { IoIosPaper } from "react-icons/io"
 import NextLink from 'next/link'
 
 const links = {
-  'paper': "https://arxiv.org/abs/2002.00733",
+  'paper': "https://arxiv.org/abs/2105.08128",
   'github': "https://github.com/lukemelas/pixmatch"
 }
 
